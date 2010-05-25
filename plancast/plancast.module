@@ -1,0 +1,261 @@
+<?php
+// $Id$
+
+/**
+* Display help and module information
+* @param path which path of the site we're displaying help
+* @param arg array that holds the current path as would be returned from arg() function
+* @return help text for the path
+*/
+function plancast_help($path, $arg) {
+  $output = '';  //declare your output variable
+  switch ($path) {
+    case "admin/help#plancast":
+      $output = '<p>'.  t("Displays plans from plancast") .'</p>';
+      break;
+  }
+  return $output;
+} // function plancast_help
+
+/**
+* Valid permissions for this module
+* @return array An array of valid permissions for the plancast module
+*/
+function plancast_perm() {
+  return array('access widget content');
+} // function plancast_perm()
+
+/**
+* Implementation of hook_block().
+* @param string $op one of "list", "view", "save" and "configure"
+* @param integer $delta code to identify the block
+* @param array $edit only for "save" operation
+*/
+function plancast_block($op = 'list', $delta = 0, $edit = array()) {  
+
+	drupal_add_css(drupal_get_path('module', "plancast")."/plancast_module_style.css");
+
+	if ($op == "list") {
+    	// Generate listing of blocks from this module, for the admin/block page
+    	$block = array();
+    	$block[0]["info"] = t('Plancast');
+    	return $block;
+	}else if ($op == 'view') {
+		
+			//get the data from the configuration
+			$username = variable_get("plancast_username", "");
+			$password = variable_get("plancast_password", "");
+			$limitnum = variable_get("plancast_limitnum", "10");
+			$displaymode = variable_get("plancast_displaymode", "");
+			$maxheight = variable_get("plancast_heightmax", "");
+			$display_powerby = variable_get("plancast_powerby", 1);
+			$display_plancastlogo = variable_get("plancast_plancastlogo", 1);
+			$content = "";
+
+			//because the API return X-1 element, idk why
+			$url_count = $limitnum + 1;
+				
+			switch ($displaymode) {
+				case 0:
+					//API Url: user/show (get the user info)
+					$jsonUrl = "http://api.plancast.com/02/users/show.json?username=".$username;
+					//get the json string
+					$jsonString = file_get_contents($jsonUrl,0);						
+					if($jsonString != ""){
+						//convert the jsonString into a jsonObject
+						$jsonObject = json_decode($jsonString);
+						$user_name = $jsonObject->name;
+						$user_picture = $jsonObject->pic_square;
+						$user_username = $jsonObject->username;							
+					}	
+					$jsonString = ""; //security		
+					//API Url: plans/user
+					$jsonUrl = "http://api.plancast.com/02/plans/user.json?username=".$username."&count=".$url_count;
+				break;
+				case 1:
+					//API Url: plans/home
+					$jsonUrl = "http://".$username.":".$password."@api.plancast.com/02/plans/home.json?count=".$url_count;
+				break;
+			}
+			//get the json string
+			$jsonString = file_get_contents($jsonUrl,0);			
+			//error if empty
+			if($jsonString != ""){
+				//convert the jsonString into a jsonObject
+				$jsonObject = json_decode($jsonString);
+//START DISPLAY -------------------------------------------------------------------------------
+
+					$content .= '<div id="pc_widget">';
+
+
+					//display the user profile
+					if($displaymode == 0){
+						$content .=  '<div id="pc_user_profile">';
+							$content .=  '<div><img id="pc_user_picture" src="'.$user_picture.'" alt="'.$user_name.'"/></div>';
+							$content .=  '<div id="pc_user_info"><a target="_blank" href="http://www.plancast.com/'.$user_username.'"><div id="pc_user_name">'.$user_name.'</div><div id="pc_user_username">@'.$user_username.'</div></a></div>';
+						$content .=  "</div>";						
+					}
+					
+					if($displaymode == 1 && $display_plancastlogo == 1){
+							$content .= '<a class="pc_link_to_plancast" id="pc_header_link_to_plancast" target="_blank" href="http://www.plancast.com"><img src="http://plancast.com/images/logo5.png" alt="Go to Plancast"></a>';
+					}
+					
+					//display the plans
+					if($jsonObject->plans != "" && $jsonObject->plans != null){
+						$content .= '<div id="pc_div_plan" ';
+							if($maxheight != "" && $maxheight != null){ $content .= 'style="height:'.$maxheight.'px;overflow:auto;"';}
+						$content .=  '>';	
+						for ($i = 0; $i < $limitnum; $i++) {
+							if($jsonObject->plans[$i] != "" && $jsonObject->plans[$i] != null){
+								$content .= '<div class="pc_plan">';
+								
+								//display the picture + user name
+								if($displaymode == 1){
+									$content .= '<div class="pc_list_user">';
+										$content .= '<img src="'.$jsonObject->plans[$i]->attendee->pic_square.'" alt="'.$jsonObject->plans[$i]->attendee->name.'"/>';			
+										$content .= '<div class="pc_user_name">'.$jsonObject->plans[$i]->attendee->name.'</div>';
+										$content .= '<div class="pc_user_username"></div>';
+									$content .= '</div>';
+								}
+								
+								$content .= '<a target="_blank" href="'.$jsonObject->plans[$i]->plan_url.'">';
+								$content .= '<div class="pc_plan_what">'.$jsonObject->plans[$i]->what.'</div>';
+								$content .= '<div class="pc_plan_where_when">'.$jsonObject->plans[$i]->when.' | '.$jsonObject->plans[$i]->where.'</div>';						
+								$content .= '</a></div>';									
+							}
+						}	
+			
+						$content .= '</div>'; //close id=pc_div_plan div	
+						
+						if($displaymode == 0 && $display_plancastlogo == 1){
+							$content .= '<a class="pc_link_to_plancast" id="pc_footer_link_to_plancast" target="_blank" href="http://www.plancast.com"><img src="http://plancast.com/images/logo5.png" alt="Go to Plancast"></a>';
+						}					
+						if($display_powerby == 1){
+							$content .= '<div id="exygy_logo">Powered by <a target="_blank" href="http://exygy.com">Exygy&copy;</a></div>';
+						}
+					}else{ //
+						$content .= "<p>No plans yet.</p>";
+					}
+					$content .= '</div>'; //close id=pc_widget div
+
+//END DISPLAY ---------------------------------------------------------------------------------
+			}else{
+					$content = "<p>Wrong login or password.</p>";						
+			}
+			$block['subject'] = variable_get("plancast_title", "");;
+			$block['content'] = $content;
+			return $block;	
+	} 
+} // function plancast_block
+
+function plancast_admin() {
+	$form = array();
+
+	$form['plancast_title'] = array(
+    	'#type' => 'textfield',
+    	'#title' => t('Title'),
+    	'#size' => 30,
+    	'#maxlength' => 150,
+		'#default_value' => variable_get('plancast_title', "Plancast"),
+    	'#description' => t("The Title above the plancast box."),
+    	'#required' => FALSE,
+    );
+
+	$form['plancast_username'] = array(
+    	'#type' => 'textfield',
+    	'#title' => t('User Name'),
+    	'#size' => 30,
+    	'#maxlength' => 150,
+		'#default_value' => variable_get('plancast_username', ""),
+    	'#description' => t("The user to display or login."),
+    	'#required' => TRUE,
+    );
+    
+    $form['plancast_password'] = array(
+    	'#type' => 'password',
+    	'#title' => t('User Password'),
+    	'#size' => 30,
+    	'#maxlength' => 150,
+		'#default_value' => variable_get('plancast_password', ""),	
+    	'#description' => t("Required only to display your Friends Plans"),
+    	'#required' => FALSE,
+    );
+      
+	$period = array("Specified User Plans (no password requiered)", "My Friends Plans (login/password requiered)");
+	
+	$form['plancast_displaymode'] = array(
+		'#type' => 'select',
+		'#title' => t('Info to display'),
+		'#default_value' => variable_get('plancast_displaymode', 0),
+		'#options' => $period,
+	);
+	
+	$form['plancast_limitnum'] = array(
+    	'#type' => 'textfield',
+    	'#title' => t('Number of Plans to display'),
+    	'#size' => 3,
+    	'#maxlength' => 3,
+		'#default_value' => variable_get('plancast_limitnum', "10"),	
+    	'#description' => t("Default 10 | Limited to 100"),		
+    	'#required' => FALSE,
+    );
+    
+    $form['plancast_heightmax'] = array(
+    	'#type' => 'textfield',
+    	'#title' => t('Limit the height of the block to'),
+    	'#size' => 10,
+    	'#maxlength' => 3,
+		'#default_value' => variable_get('plancast_heightmax', ""),	
+    	'#description' => t("Leave empty for full size."),		
+    	'#required' => FALSE,
+    );
+    
+    $form['plancast_plancastlogo'] = array(
+    	'#type' => 'checkbox',
+    	'#title' => t('Display the Plancast Logo'),
+		'#default_value' => variable_get('plancast_plancastlogo', 1),	
+    	'#required' => FALSE,
+    );
+
+    $form['plancast_powerby'] = array(
+    	'#type' => 'checkbox',
+    	'#title' => t('Display "Power by"'),
+		'#default_value' => variable_get('plancast_powerby', 1),	
+    	'#required' => FALSE,
+    );
+
+	return system_settings_form($form);
+}
+
+
+function plancast_admin_validate($form, &$form_state) {
+  $username = $form_state['values']['plancast_username'];
+  if ($username == "" || $username == null) {
+    form_set_error('plancast_username', t('You must enter a valid username.'));
+  }
+  $displaymode = $form_state['values']['plancast_displaymode'];
+  $password = $form_state['values']['plancast_password'];
+  if ($displaymode == 1 && ($password == "" || $password == null)) {
+    form_set_error('plancast_password', t('You must enter a password.'));
+  }
+  $limitenum = $form_state['values']['plancast_limitnum'];
+  if ($limitenum > 100) {
+    form_set_error('plancast_limitnum', t('You must enter value inferior or equal to 100.'));
+  }  
+}
+
+function plancast_menu() {
+
+  $items = array();
+
+  $items['admin/settings/plancast'] = array(
+    'title' => 'Plancast Module',
+    'description' => 'Description coming soon',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('plancast_admin'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+   );
+
+  return $items;
+}

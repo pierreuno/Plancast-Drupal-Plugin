@@ -48,6 +48,8 @@ function plancast_block($op = 'list', $delta = 0, $edit = array()) {
 			$limitnum = variable_get("plancast_limitnum", "10");
 			$displaymode = variable_get("plancast_displaymode", "");
 			$maxheight = variable_get("plancast_heightmax", "");
+			$display_powerby = variable_get("plancast_powerby", 1);
+			$display_plancastlogo = variable_get("plancast_plancastlogo", 1);
 			$content = "";
 
 			//because the API return X-1 element, idk why
@@ -94,7 +96,7 @@ function plancast_block($op = 'list', $delta = 0, $edit = array()) {
 						$content .=  "</div>";						
 					}
 					
-					if($displaymode == 1){
+					if($displaymode == 1 && $display_plancastlogo == 1){
 							$content .= '<a class="pc_link_to_plancast" id="pc_header_link_to_plancast" target="_blank" href="http://www.plancast.com"><img src="http://plancast.com/images/logo5.png" alt="Go to Plancast"></a>';
 					}
 					
@@ -125,12 +127,12 @@ function plancast_block($op = 'list', $delta = 0, $edit = array()) {
 			
 						$content .= '</div>'; //close id=pc_div_plan div	
 						
-						if($displaymode == 0){
+						if($displaymode == 0 && $display_plancastlogo == 1){
 							$content .= '<a class="pc_link_to_plancast" id="pc_footer_link_to_plancast" target="_blank" href="http://www.plancast.com"><img src="http://plancast.com/images/logo5.png" alt="Go to Plancast"></a>';
 						}					
-						
-						$content .= '<div id="exygy_logo">Powered by <a target="_blank" href="http://exygy.com">Exygy&copy;</a></div>';
-						
+						if($display_powerby == 1){
+							$content .= '<div id="exygy_logo">Powered by <a target="_blank" href="http://exygy.com">Exygy&copy;</a></div>';
+						}
 					}else{ //
 						$content .= "<p>No plans yet.</p>";
 					}
@@ -205,6 +207,20 @@ function plancast_admin() {
     	'#maxlength' => 3,
 		'#default_value' => variable_get('plancast_heightmax', ""),	
     	'#description' => t("Leave empty for full size."),		
+    	'#required' => FALSE,
+    );
+    
+    $form['plancast_plancastlogo'] = array(
+    	'#type' => 'checkbox',
+    	'#title' => t('Display the Plancast Logo'),
+		'#default_value' => variable_get('plancast_plancastlogo', 1),	
+    	'#required' => FALSE,
+    );
+
+    $form['plancast_powerby'] = array(
+    	'#type' => 'checkbox',
+    	'#title' => t('Display "Power by"'),
+		'#default_value' => variable_get('plancast_powerby', 1),	
     	'#required' => FALSE,
     );
 

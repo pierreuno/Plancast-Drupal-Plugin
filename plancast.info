@@ -1,4 +1,0 @@
-; $Id$
-name = Plancast
-description = Display a block with your plans or friends plans from plancast.com
-core = 6.x

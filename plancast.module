@@ -122,12 +122,13 @@ function plancast_block($op = 'list', $delta = 0, $edit = array()) {
 								$content .= '</a></div>';									
 							}
 						}	
+			
+						$content .= '</div>'; //close id=pc_div_plan div	
 						
 						if($displaymode == 0){
 							$content .= '<a class="pc_link_to_plancast" id="pc_footer_link_to_plancast" target="_blank" href="http://www.plancast.com"><img src="http://plancast.com/images/logo5.png" alt="Go to Plancast"></a>';
-						}
+						}					
 						
-						$content .= '</div>'; //close id=pc_div_plan div	
 						$content .= '<div id="exygy_logo">Powered by <a target="_blank" href="http://exygy.com">Exygy&copy;</a></div>';
 						
 					}else{ //
